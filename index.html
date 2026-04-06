@@ -3,78 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thi Thật 50 Câu</title>
-
+<title>Thi Thật 50/200 câu</title>
 <style>
-body {
-    font-family: Arial;
-    background: #eef1f5;
-    padding: 20px;
-}
-
-h1 {
-    text-align: center;
-    color: red;
-}
-
-#timer {
-    text-align: center;
-    font-size: 20px;
-    color: #d9534f;
-    margin-bottom: 20px;
-    font-weight: bold;
-}
-
-.question {
-    background: white;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-    border-left: 5px solid #007bff;
-}
-
-.correct {
-    border-left: 5px solid green !important;
-}
-
-.wrong {
-    border-left: 5px solid red !important;
-}
-
-button {
-    padding: 12px 25px;
-    font-size: 16px;
-    margin: 20px auto;
-    display: block;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 8px;
-}
-
-button:hover {
-    background: #0056b3;
-}
+body { font-family: Arial,sans-serif; background:#f4f6f9; padding:20px;}
+h1 { text-align:center; color:red; }
+.timer { font-size:20px; color:blue; text-align:center; margin-bottom:20px; }
+.question { background:white; padding:15px; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+.options label { display:block; margin:5px 0; }
+button { padding:10px 20px; font-size:16px; border:none; border-radius:6px; background:red; color:white; cursor:pointer; margin-top:20px; }
+button:hover { background:darkred; }
+.correct { color:green; font-weight:bold; }
+.wrong { color:red; font-weight:bold; }
 </style>
 </head>
-
 <body>
 
-<h1>🪖 THI TRẮC NGHIỆM 50 CÂU</h1>
-
-<div id="timer">⏱️ 30:00</div>
-
+<h1>🔥 THI THẬT – 50/200 Câu</h1>
+<div class="timer" id="timer">30:00</div>
 <div id="quiz"></div>
-
-<button onclick="submitQuiz()">Nộp bài</button>
-
-<h2 id="result" style="text-align:center;"></h2>
+<button id="submitBtn">Nộp bài</button>
+<div id="result"></div>
 
 <script>
-
-// ===== NGÂN HÀNG CÂU HỎI =====
-const questions = [
-{
+// ======= DỮ LIỆU CÂU HỎI =======
+// Mỗi câu: {question: "...", options:["A","B","C","D"], answer:"A"}
+const allQuestions = [
+   {
 q: "Đồng chí cho biết Thủ đoạn chiến lược “diễn biến hòa bình” của các thế lực thù địch chống phá cách mạng Việt Nam là gì?",
 answers: [
 "Chống phá trên lĩnh vực chính trị; chống phá trên lĩnh vực tư tưởng, văn hóa; chống phá trên lĩnh vực xã hội; chống phá trên lĩnh vực quốc phòng, an ninh; chống phá trên lĩnh vực đối ngoại",
@@ -1166,98 +1120,57 @@ correct: 3
 }
 ];
 
-// ===== XÁO TRỘN =====
-function shuffle(array) {
-    let arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
-        let j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
+// ======= LẤY NGẪU NHIÊN 50 CÂU =======
+function getRandomQuestions(arr, n){
+    const shuffled = arr.sort(()=>0.5-Math.random());
+    return shuffled.slice(0,n);
 }
 
-// ===== RANDOM 50 CÂU =====
-let selected = shuffle(questions).slice(0, 50);
+const quizQuestions = getRandomQuestions(allQuestions, 50);
 
-// ===== LOAD QUIZ =====
-function loadQuiz() {
-    const quiz = document.getElementById("quiz");
-    quiz.innerHTML = "";
+// ======= HIỂN THỊ CÂU HỎI =======
+const quizDiv = document.getElementById("quiz");
+quizQuestions.forEach((q,i)=>{
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `<p><b>Câu ${i+1}:</b> ${q.question}</p>
+                     <div class="options">
+                     ${q.options.map(o=>`<label><input type="radio" name="q${i}" value="${o}"> ${o}</label>`).join('')}
+                     </div>`;
+    quizDiv.appendChild(div);
+});
 
-    selected.forEach((item, index) => {
-        let answers = item.a.map((ans, i) => ({ans, i}));
-        let shuffled = shuffle(answers);
-
-        let html = `<div class="question" id="q${index}">
-        <b>Câu ${index + 1}: ${item.q}</b><br>`;
-
-        shuffled.forEach(obj => {
-            html += `
-            <label>
-                <input type="radio" name="q${index}" value="${obj.i}">
-                ${obj.ans}
-            </label><br>`;
-        });
-
-        html += `</div>`;
-        quiz.innerHTML += html;
-    });
-}
-
-loadQuiz();
-
-// ===== TIMER 30 PHÚT =====
-let time = 30 * 60;
-
-function updateTimer() {
-    let min = Math.floor(time / 60);
-    let sec = time % 60;
-
-    document.getElementById("timer").innerText =
-        `⏱️ ${min}:${sec < 10 ? '0' + sec : sec}`;
-
-    if (time <= 0) {
+// ======= ĐẾM NGƯỢC 45 PHÚT =======
+let timeLeft = 45*60; // 45 phút
+const timerEl = document.getElementById("timer");
+const timerInterval = setInterval(()=>{
+    let m = Math.floor(timeLeft/60);
+    let s = timeLeft%60;
+    timerEl.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    if(timeLeft<=0){
+        clearInterval(timerInterval);
+        alert("Hết giờ! Tự động nộp bài.");
         submitQuiz();
-    } else {
-        time--;
-        setTimeout(updateTimer, 1000);
     }
-}
+    timeLeft--;
+},1000);
 
-updateTimer();
-
-// ===== CHẤM ĐIỂM =====
-function submitQuiz() {
-    let score = 0;
-
-    selected.forEach((item, index) => {
-        let answers = document.getElementsByName("q" + index);
-        let chosen = -1;
-
-        answers.forEach(a => {
-            if (a.checked) chosen = parseInt(a.value);
-        });
-
-        let box = document.getElementById("q" + index);
-
-        if (chosen === item.correct) {
-            score++;
-            box.classList.add("correct");
-        } else {
-            box.classList.add("wrong");
-
-            // hiển thị đáp án đúng
-            let correctText = item.a[item.correct];
-            box.innerHTML += `<p style="color:green">Đáp án đúng: ${correctText}</p>`;
-        }
+// ======= NỘP BÀI & BÁO KẾT QUẢ =======
+function submitQuiz(){
+    clearInterval(timerInterval);
+    let score=0;
+    let wrongList=[];
+    quizQuestions.forEach((q,i)=>{
+        const selected = document.querySelector(`input[name=q${i}]:checked`);
+        if(selected && selected.value===q.answer) score++;
+        else wrongList.push(`Câu ${i+1}`);
     });
-
-    document.getElementById("result").innerHTML =
-        `🎯 Kết quả: ${score}/50 câu`;
-
-    window.scrollTo(0, document.body.scrollHeight);
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = `<h2>Kết quả: ${score}/50</h2>
+                           ${wrongList.length>0? `<p class="wrong">Sai: ${wrongList.join(", ")}</p>` : `<p class="correct">Tất cả đúng!</p>`}`;
 }
 
+document.getElementById("submitBtn").addEventListener("click", submitQuiz);
 </script>
 
 </body>
