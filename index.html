@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Chat Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 2rem; }
+    .container { width: 100%; max-width: 680px; }
+    h1 { margin-bottom: 1rem; font-size: 1.4rem; color: #333; }
+    #chat-box {
+      background: #fff; border: 1px solid #ddd; border-radius: 8px;
+      padding: 1rem; min-height: 200px; max-height: 400px; overflow-y: auto;
+      margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.6;
+    }
+    .message { margin-bottom: 0.75rem; }
+    .message.user { color: #1a73e8; }
+    .message.assistant { color: #333; }
+    .label { font-weight: bold; margin-right: 0.4rem; }
+    .input-row { display: flex; gap: 0.5rem; }
+    #user-input {
+      flex: 1; padding: 0.6rem 0.8rem; border: 1px solid #ccc;
+      border-radius: 6px; font-size: 0.95rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem; background: #1a73e8; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem;
+    }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    #status { margin-top: 0.5rem; font-size: 0.85rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Claude Chat (via Proxy API)</h1>
+    <div id="chat-box"></div>
+    <div class="input-row">
+      <input id="user-input" type="text" placeholder="Nhập tin nhắn..." />
+      <button id="send-btn" onclick="sendMessage()">Gửi</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+<script>
+  const conversationHistory = [];
+
+  async function sendMessage() {
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const status = document.getElementById("status");
+    const userText = input.value.trim();
+
+    if (!userText) return;
+
+    appendMessage("user", userText);
+    conversationHistory.push({ role: "user", content: userText });
+    input.value = "";
+    sendBtn.disabled = true;
+    status.textContent = "Đang gửi...";
+
+    try {
+      const response = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: conversationHistory }),
+      });
+
+      const data = await response.json();
+      console.log("API response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      const assistantText = data.content?.[0]?.text || "(Không có phản hồi)";
+      conversationHistory.push({ role: "assistant", content: assistantText });
+      appendMessage("assistant", assistantText);
+      status.textContent = "";
+    } catch (err) {
+      console.error("Lỗi:", err);
+      status.textContent = `❌ Lỗi: ${err.message}`;
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function appendMessage(role, text) {
+    const chatBox = document.getElementById("chat-box");
+    const div = document.createElement("div");
+    div.className = `message ${role}`;
+    div.innerHTML = `<span class="label">${role === "user" ? "Bạn" : "Claude"}:</span>${escapeHtml(text)}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // Gửi bằng Enter
+  document.getElementById("user-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+</body>
+</html>
