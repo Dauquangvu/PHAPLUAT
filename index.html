@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FBBoost Pro — Semi-Auto Interaction Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .sidebar-item.active { background: rgba(99,102,241,.12); color: #6366f1; }
+    .sidebar-item.active .icon { color: #6366f1; }
+    .post-card { transition: box-shadow .2s; }
+    .post-card:hover { box-shadow: 0 4px 24px rgba(99,102,241,.10); }
+    .log-entry { animation: slideIn .3s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .badge-live { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .spinner { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .btn-primary:hover { background: linear-gradient(135deg,#4f46e5,#7c3aed); }
+    select option { background: #1e293b; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="w-64 min-h-screen bg-slate-900 border-r border-slate-800 flex flex-col fixed top-0 left-0 z-40 transition-transform duration-300">
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-slate-800 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg btn-primary flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      </div>
+      <div>
+        <span class="font-bold text-white text-sm tracking-tight">FBBoost Pro</span>
+        <span class="block text-xs text-slate-500">Semi-Auto Tool</span>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      <button onclick="showSection('dashboard')" class="sidebar-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:bg-slate-800">
+        <svg class="icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button onclick="showSection('posts')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:bg-slate-800">
+        <svg class="icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Posts & Interaction
+      </button>
+      <button onclick="showSection('logs')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:bg-slate-800">
+        <svg class="icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8m-8 4h6"/></svg>
+        Execution Logs
+        <span id="log-badge" class="ml-auto text-xs bg-indigo-500 text-white px-1.5 py-0.5 rounded-full hidden">0</span>
+      </button>
+      <button onclick="showSection('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-300 hover:bg-slate-800">
+        <svg class="icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </nav>
+
+    <!-- Status -->
+    <div class="px-4 py-4 border-t border-slate-800">
+      <div class="bg-slate-800 rounded-lg px-3 py-2.5 flex items-center gap-2">
+        <div id="status-dot" class="w-2 h-2 rounded-full bg-slate-500"></div>
+        <span id="status-text" class="text-xs text-slate-400">Idle</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 ml-64 min-h-screen flex flex-col">
+
+    <!-- Top Bar -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 lg:hidden">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div>
+          <h1 id="page-title" class="text-base font-semibold text-white">Dashboard</h1>
+          <p id="page-subtitle" class="text-xs text-slate-500">Tổng quan hệ thống</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="run-status-badge" class="hidden items-center gap-1.5 text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full badge-live">
+          <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+          Running
+        </span>
+        <button id="run-btn" onclick="runExecution()" class="btn-primary text-white text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          RUN
+        </button>
+      </div>
+    </header>
+
+    <!-- SECTIONS -->
+    <div class="flex-1 p-6">
+
+      <!-- DASHBOARD -->
+      <section id="section-dashboard">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1">Posts loaded</p>
+            <p id="stat-posts" class="text-2xl font-bold text-white">0</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1">Actions queued</p>
+            <p id="stat-actions" class="text-2xl font-bold text-indigo-400">0</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1">Completed</p>
+            <p id="stat-done" class="text-2xl font-bold text-emerald-400">0</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            <p class="text-xs text-slate-500 mb-1">AI comments gen</p>
+            <p id="stat-ai" class="text-2xl font-bold text-violet-400">0</p>
+          </div>
+        </div>
+
+        <!-- Page Input Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-5">
+          <h2 class="text-sm font-semibold text-white mb-1 flex items-center gap-2">
+            <svg class="w-4 h-4 text-indigo-400" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            Facebook Page Input
+          </h2>
+          <p class="text-xs text-slate-500 mb-4">Nhập link Facebook Page để lấy bài viết</p>
+          <div class="flex gap-3">
+            <input id="page-url" type="text" placeholder="https://www.facebook.com/yourpage"
+              class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30" />
+            <button onclick="fetchPosts()" id="fetch-btn"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap">
+              <svg id="fetch-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Fetch Posts
+            </button>
+          </div>
+          <p class="text-xs text-slate-600 mt-2">* Dùng Facebook Page ID hoặc username (ví dụ: facebook.com/cocacola)</p>
+        </div>
+
+        <!-- Quick tip -->
+        <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex gap-3">
+          <svg class="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div class="text-xs text-indigo-300 space-y-1">
+            <p class="font-medium">Hướng dẫn sử dụng</p>
+            <p>1. Nhập link Facebook Page → Fetch Posts</p>
+            <p>2. Chọn actions (like/comment/share) cho từng bài</p>
+            <p>3. Generate AI comment nếu cần</p>
+            <p>4. Nhấn RUN — tool sẽ mở từng bài và copy comment vào clipboard</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- POSTS SECTION -->
+      <section id="section-posts" class="hidden">
+        <div id="posts-empty" class="flex flex-col items-center justify-center py-20 text-center">
+          <svg class="w-14 h-14 text-slate-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="text-slate-500 text-sm">Chưa có bài viết nào. Hãy Fetch Posts từ Dashboard.</p>
+          <button onclick="showSection('dashboard')" class="mt-4 text-xs text-indigo-400 hover:text-indigo-300 underline">Về Dashboard</button>
+        </div>
+        <div id="posts-list" class="space-y-4 hidden"></div>
+      </section>
+
+      <!-- LOGS SECTION -->
+      <section id="section-logs" class="hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+            <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8m-8 4h6"/></svg>
+              Execution Logs
+            </h2>
+            <button onclick="clearLogs()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+          </div>
+          <div id="log-container" class="min-h-64 max-h-[600px] overflow-y-auto bg-slate-950 font-mono text-xs p-4 space-y-1">
+            <p class="text-slate-600 italic">Logs will appear here during execution...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS SECTION -->
+      <section id="section-settings" class="hidden">
+        <div class="max-w-xl space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 class="text-sm font-semibold text-white mb-4">Execution Settings</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Delay tối thiểu (giây)</label>
+                <input id="delay-min" type="number" value="7" min="3" max="60"
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 mb-1 block">Delay tối đa (giây)</label>
+                <input id="delay-max" type="number" value="20" min="5" max="120"
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 class="text-sm font-semibold text-white mb-4">AI Settings</h2>
+            <div>
+              <label class="text-xs text-slate-400 mb-1 block">Default comment style</label>
+              <select id="default-style" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                <option value="natural">Tự nhiên</option>
+                <option value="seeding">Seeding</option>
+                <option value="viral">Viral</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3">
+            <svg class="w-4 h-4 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <div class="text-xs text-amber-300 space-y-1">
+              <p class="font-medium">Lưu ý an toàn</p>
+              <p>Tool này không tự động click hay login Facebook. Mọi thao tác đều cần bạn thực hiện thủ công sau khi tool mở bài viết và copy comment.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
