@@ -1,341 +1,428 @@
-// =============================================
-// FB Interaction Pro — script.js
-// =============================================
+// script.js — FB Interaction Pro
+// Kết nối với /api/posts và /api/ai trên Vercel
 
-let posts = [];
-let logCount = 0;
-let doneCount = 0;
-let isRunning = false;
+// ─── STATE ───────────────────────────────────────────────
+const state = {
+  posts: [],
+  pageInfo: null,
+  logCount: 0,
+};
 
-// ---- NAVIGATION ----
+// ─── NAVIGATION ──────────────────────────────────────────
 function showSection(name) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
-  document.getElementById('section-' + name).classList.add('active');
-
-  const items = document.querySelectorAll('.sidebar-item');
-  const labels = ['dashboard', 'posts', 'logs', 'settings'];
-  labels.forEach((l, i) => { if (l === name) items[i].classList.add('active'); });
-
+  document.getElementById('section-' + name)?.classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    if (item.getAttribute('onclick')?.includes(name)) item.classList.add('active');
+  });
   const titles = {
     dashboard: ['Dashboard', 'Tổng quan hoạt động'],
-    posts: ['Posts', 'Quản lý bài viết'],
-    logs: ['Logs', 'Nhật ký thực thi'],
-    settings: ['Cài đặt', 'Cấu hình hệ thống'],
+    posts:     ['Posts', 'Danh sách bài viết'],
+    logs:      ['Logs', 'Lịch sử thực thi'],
+    settings:  ['Cài đặt', 'Cấu hình hệ thống'],
   };
-  document.getElementById('page-title').textContent = titles[name][0];
-  document.getElementById('page-sub').textContent = titles[name][1];
+  if (titles[name]) {
+    document.getElementById('page-title').textContent = titles[name][0];
+    document.getElementById('page-sub').textContent   = titles[name][1];
+  }
 }
 
-// ---- MOCK DATA ----
-const MOCK_POSTS = [
-  { id: 1, url: 'https://facebook.com/post/1001', content: '🎉 Chúng tôi vừa ra mắt sản phẩm mới hoàn toàn đột phá! Cảm ơn tất cả mọi người đã đồng hành cùng chúng tôi trong suốt hành trình này. Hãy like và share để ủng hộ nhé!', image: 'https://picsum.photos/seed/fb1/400/220', likes: 842, comments: 134, shares: 67, time: '2 giờ trước' },
-  { id: 2, url: 'https://facebook.com/post/1002', content: '📊 Kết quả kinh doanh Q1 2025 vượt kỳ vọng! Doanh thu tăng 43% so với cùng kỳ năm ngoái. Đây là thành quả của cả đội ngũ 200+ thành viên.', image: 'https://picsum.photos/seed/fb2/400/220', likes: 1203, comments: 89, shares: 45, time: '5 giờ trước' },
-  { id: 3, url: 'https://facebook.com/post/1003', content: '🌟 Tips quan trọng cho startup năm 2025: Đừng chỉ tập trung vào product mà quên đi community. Community mới là thứ tạo ra growth bền vững.', image: null, likes: 567, comments: 203, shares: 128, time: '8 giờ trước' },
-  { id: 4, url: 'https://facebook.com/post/1004', content: '💡 Workshop miễn phí: "AI trong Marketing 2025" — Đăng ký ngay hôm nay! Chỉ còn 50 suất cuối cùng. Link đăng ký trong comment nhé.', image: 'https://picsum.photos/seed/fb4/400/220', likes: 2341, comments: 456, shares: 312, time: '1 ngày trước' },
-  { id: 5, url: 'https://facebook.com/post/1005', content: '🔥 Flashsale 48h! Giảm đến 70% toàn bộ sản phẩm. Cơ hội cuối năm không thể bỏ lỡ. Tag bạn bè vào để không ai bỏ lỡ deal này nhé!', image: 'https://picsum.photos/seed/fb5/400/220', likes: 4892, comments: 1204, shares: 876, time: '2 ngày trước' },
-  { id: 6, url: 'https://facebook.com/post/1006', content: '❤️ Cảm ơn 100,000 followers đã luôn tin tưởng và ủng hộ! Mỗi comment, like, share của các bạn đều là động lực để chúng tôi tiếp tục cống hiến.', image: 'https://picsum.photos/seed/fb6/400/220', likes: 8934, comments: 2341, shares: 1204, time: '3 ngày trước' },
-  { id: 7, url: 'https://facebook.com/post/1007', content: '🚀 Chính thức mở văn phòng tại TP.HCM! Chúng tôi đang tuyển dụng nhiều vị trí hấp dẫn. Developer, Designer, Marketing... Inbox ngay!', image: null, likes: 1567, comments: 345, shares: 189, time: '4 ngày trước' },
-  { id: 8, url: 'https://facebook.com/post/1008', content: '📱 Update mới nhất của app đã có trên Store! Giao diện hoàn toàn mới, tốc độ nhanh hơn 3x, thêm nhiều tính năng thú vị. Cập nhật ngay!', image: 'https://picsum.photos/seed/fb8/400/220', likes: 3421, comments: 789, shares: 234, time: '5 ngày trước' },
-  { id: 9, url: 'https://facebook.com/post/1009', content: '🌈 Diversity & Inclusion tại công ty chúng tôi không chỉ là khẩu hiệu mà là văn hóa thực sự. Tự hào khi đội ngũ của chúng tôi đến từ 12 quốc gia!', image: 'https://picsum.photos/seed/fb9/400/220', likes: 2103, comments: 456, shares: 312, time: '6 ngày trước' },
-  { id: 10, url: 'https://facebook.com/post/1010', content: '📣 QUAN TRỌNG: Thay đổi chính sách sử dụng dịch vụ từ 01/02/2025. Vui lòng đọc kỹ và xác nhận đồng ý trước ngày 31/01. Link trong bio.', image: null, likes: 456, comments: 234, shares: 567, time: '1 tuần trước' },
-];
-
-// ---- FETCH POSTS ----
+// ─── FETCH POSTS ─────────────────────────────────────────
 async function fetchPosts() {
-  const url = document.getElementById('page-url').value.trim();
-  if (!url) { showToast('Vui lòng nhập URL page!', 'warning'); return; }
-
-  const btn = document.getElementById('fetch-btn');
-  const icon = document.getElementById('fetch-icon');
+  const url   = document.getElementById('page-url').value.trim();
+  const btn   = document.getElementById('fetch-btn');
+  const icon  = document.getElementById('fetch-icon');
   const label = document.getElementById('fetch-label');
+
+  if (!url) { showToast('Nhập URL hoặc tên page Facebook', 'warning'); return; }
 
   btn.disabled = true;
   icon.innerHTML = '<div class="spinner"></div>';
   label.textContent = 'Đang tải...';
+  setStatus('Fetching posts...', 'blue');
+  addLog('info', `Fetching posts từ: ${url}`);
 
-  // Simulate delay
-  await delay(1200);
+  try {
+    const res  = await fetch(`/api/posts?page=${encodeURIComponent(url)}`);
+    const data = await res.json();
 
-  posts = MOCK_POSTS.map(p => ({ ...p, like: false, comment: false, share: false, commentText: '', style: 'natural' }));
-  renderPosts();
-  updateStats();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'Không lấy được posts');
+    }
 
-  btn.disabled = false;
-  icon.textContent = '⬇';
-  label.textContent = 'Fetch Posts';
+    state.posts    = data.posts;
+    state.pageInfo = data.page;
 
-  document.getElementById('post-count-badge').textContent = posts.length;
-  document.getElementById('post-count-badge').classList.remove('hidden');
-  document.getElementById('run-btn').disabled = false;
+    renderPosts();
+    updateStats();
+    updateRunBtn();
 
-  showToast(`Đã tải ${posts.length} bài viết!`, 'success');
-  addLog('success', `Loaded ${posts.length} posts from: ${url}`);
-  showSection('posts');
+    addLog('success', `Đã tải ${data.posts.length} posts từ page "${data.page.name}"`);
+    showToast(`✅ Tải được ${data.posts.length} posts`, 'success');
+    setStatus('Posts loaded', 'green');
+
+    // Chuyển sang tab Posts
+    showSection('posts');
+
+  } catch (err) {
+    addLog('error', `Fetch thất bại: ${err.message}`);
+    showToast(`❌ ${err.message}`, 'error');
+    setStatus('Error', 'red');
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '⬇';
+    label.textContent = 'Fetch Posts';
+  }
 }
 
-// ---- RENDER POSTS ----
+// ─── RENDER POSTS ─────────────────────────────────────────
 function renderPosts() {
   const container = document.getElementById('posts-container');
-  if (!posts.length) {
-    container.innerHTML = `<div class="text-center py-16" style="color:var(--muted)"><div class="text-4xl mb-3">📭</div><p class="text-sm">Chưa có posts.</p></div>`;
+  if (!state.posts.length) {
+    container.innerHTML = `<div class="text-center py-16" style="color:var(--muted)"><div class="text-4xl mb-3">📭</div><p class="text-sm">Không có posts nào.</p></div>`;
     return;
   }
 
-  container.innerHTML = posts.map((post, idx) => `
-    <div class="post-card p-4 mb-4 slide-in ${post.like || post.comment || post.share ? 'selected' : ''}" id="post-card-${idx}">
-      <div class="flex gap-4">
-        ${post.image ? `<img src="${post.image}" class="w-28 h-20 rounded-lg object-cover flex-shrink-0" onerror="this.style.display='none'" />` : ''}
+  // Page header
+  let pageHeader = '';
+  if (state.pageInfo) {
+    pageHeader = `
+      <div class="card p-4 mb-4 flex items-center gap-3">
+        ${state.pageInfo.avatar ? `<img src="${state.pageInfo.avatar}" class="w-10 h-10 rounded-full" />` : '<div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">📄</div>'}
+        <div>
+          <div class="font-semibold text-sm">${escHtml(state.pageInfo.name)}</div>
+          <div class="text-xs" style="color:var(--muted)">${fmtNum(state.pageInfo.fans)} followers</div>
+        </div>
+        <div class="ml-auto text-xs" style="color:var(--muted)">${state.posts.length} posts</div>
+      </div>`;
+  }
+
+  const html = state.posts.map((post, i) => `
+    <div class="post-card p-4 mb-3 slide-in" id="post-card-${i}" style="animation-delay:${i * 30}ms">
+      <div class="flex gap-3">
+        <!-- Checkboxes -->
+        <div class="flex flex-col gap-2 pt-1">
+          <label class="flex items-center gap-1 text-xs cursor-pointer" title="Like post">
+            <input type="checkbox" class="checkbox-custom" id="like-${i}" onchange="updateStats()"/>
+            <span style="color:var(--muted)">👍</span>
+          </label>
+          <label class="flex items-center gap-1 text-xs cursor-pointer" title="Comment post">
+            <input type="checkbox" class="checkbox-custom" id="cmt-${i}" onchange="onCommentCheck(${i})"/>
+            <span style="color:var(--muted)">💬</span>
+          </label>
+        </div>
+
+        <!-- Content -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between gap-2 mb-2">
-            <p class="text-sm leading-relaxed" style="color:var(--text)">${post.content.substring(0, 140)}${post.content.length > 140 ? '...' : ''}</p>
-            <span class="text-xs flex-shrink-0" style="color:var(--muted)">${post.time}</span>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs" style="color:var(--muted)">${fmtDate(post.created)}</span>
+            <span class="text-xs" style="color:var(--muted)">·</span>
+            <span class="text-xs" style="color:var(--muted)">👍 ${fmtNum(post.likes)}  💬 ${fmtNum(post.comments)}  🔁 ${fmtNum(post.shares)}</span>
+            <a href="${post.url}" target="_blank" class="ml-auto text-xs" style="color:var(--accent)">Xem →</a>
           </div>
-          <div class="flex gap-3 text-xs mb-3" style="color:var(--muted)">
-            <span>👍 ${post.likes.toLocaleString()}</span>
-            <span>💬 ${post.comments.toLocaleString()}</span>
-            <span>🔄 ${post.shares.toLocaleString()}</span>
-          </div>
-          <!-- Actions -->
-          <div class="flex flex-wrap gap-4 items-center">
-            <label class="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" class="checkbox-custom" ${post.like ? 'checked' : ''} onchange="toggleAction(${idx},'like',this.checked)" />
-              <span>👍 Like</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" class="checkbox-custom" ${post.comment ? 'checked' : ''} onchange="toggleAction(${idx},'comment',this.checked)" />
-              <span>💬 Comment</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" class="checkbox-custom" ${post.share ? 'checked' : ''} onchange="toggleAction(${idx},'share',this.checked)" />
-              <span>🔄 Share</span>
-            </label>
-            <a href="${post.url}" target="_blank" class="text-xs ml-auto" style="color:var(--accent)">Xem bài →</a>
+
+          <p class="text-sm leading-relaxed mb-3 line-clamp-3" style="color:var(--text)">${escHtml(post.message)}</p>
+
+          ${post.image ? `<img src="${post.image}" class="rounded-lg mb-3 max-h-40 object-cover w-full" style="border:1px solid var(--border)" onerror="this.style.display='none'" />` : ''}
+
+          <!-- AI Comment area -->
+          <div id="ai-area-${i}" class="hidden mt-2">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-semibold" style="color:var(--accent2)">🤖 AI Comment</span>
+              <select id="style-${i}" class="text-xs rounded px-2 py-1 ml-auto" style="background:var(--bg);border:1px solid var(--border);color:var(--text)">
+                <option value="natural">🌿 Tự nhiên</option>
+                <option value="seeding">🌱 Seeding</option>
+                <option value="viral">🔥 Viral</option>
+              </select>
+              <button class="btn btn-cyan text-xs py-1 px-2" onclick="generateComment(${i})">
+                <span id="gen-icon-${i}">✨</span> Gen
+              </button>
+            </div>
+            <textarea id="comment-${i}" class="input text-xs" rows="3" placeholder="Bấm Gen để tạo comment AI..."></textarea>
+            <div class="flex gap-2 mt-2">
+              <button class="btn btn-ghost text-xs py-1 px-2" onclick="copyComment(${i})">📋 Copy</button>
+              <button class="btn btn-ghost text-xs py-1 px-2" onclick="openPost(${i})">🔗 Mở tab</button>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Comment section -->
-      ${post.comment ? `
-        <div class="mt-3 pt-3 border-t" style="border-color:var(--border)">
-          <div class="flex gap-2 mb-2 items-center">
-            <span class="text-xs" style="color:var(--muted)">Style:</span>
-            <select class="input text-xs py-1 px-2" style="max-width:140px;height:auto" onchange="updateStyle(${idx},this.value)">
-              <option value="natural" ${post.style==='natural'?'selected':''}>🌿 Tự nhiên</option>
-              <option value="seeding" ${post.style==='seeding'?'selected':''}>🌱 Seeding</option>
-              <option value="viral" ${post.style==='viral'?'selected':''}>🔥 Viral</option>
-            </select>
-            <button class="btn btn-cyan text-xs py-1 px-3 ml-auto" id="ai-btn-${idx}" onclick="generateComment(${idx})">
-              🤖 AI Generate
-            </button>
-          </div>
-          <textarea class="input text-sm" rows="2" placeholder="Nhập comment hoặc generate bằng AI..."
-            onchange="updateComment(${idx},this.value)">${post.commentText}</textarea>
-          ${post.commentText ? `<div class="flex items-center gap-1 mt-1"><div class="pulse-dot" style="background:var(--success)"></div><span class="text-xs" style="color:var(--success)">Ready</span></div>` : ''}
-        </div>
-      ` : ''}
     </div>
   `).join('');
+
+  container.innerHTML = pageHeader + html;
+
+  // Badge
+  const badge = document.getElementById('post-count-badge');
+  badge.textContent = state.posts.length;
+  badge.classList.remove('hidden');
 }
 
-// ---- INTERACTION TOGGLES ----
-function toggleAction(idx, action, val) {
-  posts[idx][action] = val;
+// ─── COMMENT CHECK ────────────────────────────────────────
+function onCommentCheck(i) {
+  const checked = document.getElementById(`cmt-${i}`)?.checked;
+  const area    = document.getElementById(`ai-area-${i}`);
+  if (area) area.classList.toggle('hidden', !checked);
+
+  // Update post-card selected style
+  const card = document.getElementById(`post-card-${i}`);
+  if (card) card.classList.toggle('selected', checked || document.getElementById(`like-${i}`)?.checked);
+
   updateStats();
-  renderPosts();
+  updateRunBtn();
 }
 
-function updateStyle(idx, val) { posts[idx].style = val; }
-function updateComment(idx, val) { posts[idx].commentText = val; }
+// ─── GENERATE COMMENT ─────────────────────────────────────
+async function generateComment(i) {
+  const post    = state.posts[i];
+  const style   = document.getElementById(`style-${i}`)?.value || 'natural';
+  const icon    = document.getElementById(`gen-icon-${i}`);
+  const textarea = document.getElementById(`comment-${i}`);
 
-// ---- AI GENERATE ----
-async function generateComment(idx) {
-  const post = posts[idx];
-  const btn = document.getElementById(`ai-btn-${idx}`);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Đang tạo...'; }
+  if (!post) return;
 
-  const styleLabels = { natural: 'tự nhiên, chân thật, thân thiện', seeding: 'marketing seeding tự nhiên, tạo tò mò', viral: 'viral mạnh, kêu gọi chia sẻ' };
-  const prompt = `Tạo 1 comment Facebook ${styleLabels[post.style]} cho bài viết sau. Comment ngắn gọn 1-2 câu, tiếng Việt, không hashtag quá nhiều:\n\n"${post.content.substring(0, 200)}"`;
+  const stylePrompts = {
+    natural: 'Viết 1 comment ngắn tự nhiên, thân thiện bằng tiếng Việt cho bài viết sau. Chỉ trả về comment, không giải thích.',
+    seeding: 'Viết 1 comment tiếng Việt theo kiểu seeding, tò mò, khơi gợi thảo luận cho bài viết sau. Chỉ trả về comment, không giải thích.',
+    viral:   'Viết 1 comment tiếng Việt cực kỳ hấp dẫn, có thể viral, dùng emoji phù hợp cho bài viết sau. Chỉ trả về comment, không giải thích.',
+  };
+
+  const prompt = `${stylePrompts[style]}\n\nBài viết: "${post.message.slice(0, 500)}"`;
+
+  icon.innerHTML = '<div class="spinner" style="border-top-color:#000;border-color:rgba(0,0,0,0.3);border-top-color:#000"></div>';
+  textarea.value = '';
+  textarea.placeholder = 'Đang tạo...';
+  addLog('info', `Đang gen comment (${style}) cho post #${i + 1}...`);
 
   try {
-    const res = await fetch('/api/ai', {
-      method: 'POST',
+    const res  = await fetch('/api/ai', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      body:    JSON.stringify({ prompt }),
     });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const text = data.result || data.content?.[0]?.text || 'Bài viết rất hay! Cảm ơn bạn đã chia sẻ 👍';
 
-    posts[idx].commentText = text.trim();
-    document.getElementById('stat-comments').textContent =
-      parseInt(document.getElementById('stat-comments').textContent) + 1;
-    addLog('success', `AI generated comment for post #${idx + 1} [${post.style}]`);
+    if (!res.ok || data.error) throw new Error(data.error || 'AI error');
+
+    textarea.value = data.result.trim();
+    textarea.placeholder = '';
+
+    // Update stat
+    const done = parseInt(document.getElementById('stat-comments').textContent) || 0;
+    document.getElementById('stat-comments').textContent = done + 1;
+
+    addLog('success', `Comment generated cho post #${i + 1}`);
   } catch (err) {
-    // Fallback comments
-    const fallbacks = {
-      natural: 'Bài viết rất hay và ý nghĩa! Cảm ơn bạn đã chia sẻ 😊',
-      seeding: 'Thật sự ấn tượng! Mình đã thử và kết quả khá tốt, ai chưa biết nên tìm hiểu nhé 🌟',
-      viral: '🔥 QUÁ ĐỈNH! Tag ngay bạn bè vào xem, đừng để bỏ lỡ! Share gấp!!!'
-    };
-    posts[idx].commentText = fallbacks[post.style];
-    addLog('warning', `AI fallback used for post #${idx + 1}: ${err.message}`);
+    textarea.placeholder = `Lỗi: ${err.message}`;
+    addLog('error', `Gen comment thất bại: ${err.message}`);
+    showToast(`❌ ${err.message}`, 'error');
+  } finally {
+    icon.textContent = '✨';
   }
-
-  renderPosts();
-  if (btn) { btn.disabled = false; btn.innerHTML = '🤖 AI Generate'; }
 }
 
-// ---- BULK ACTIONS ----
+// ─── GENERATE ALL ─────────────────────────────────────────
+async function generateAllComments() {
+  const checked = state.posts
+    .map((_, i) => i)
+    .filter(i => document.getElementById(`cmt-${i}`)?.checked);
+
+  if (!checked.length) {
+    showToast('Chọn ít nhất 1 post để comment trước', 'warning');
+    return;
+  }
+
+  addLog('info', `Generating ${checked.length} comments...`);
+  for (const i of checked) {
+    await generateComment(i);
+    await sleep(600);
+  }
+  showToast(`✅ Đã gen ${checked.length} comments`, 'success');
+}
+
+// ─── COPY COMMENT ─────────────────────────────────────────
+function copyComment(i) {
+  const val = document.getElementById(`comment-${i}`)?.value;
+  if (!val) { showToast('Chưa có comment để copy', 'warning'); return; }
+  navigator.clipboard.writeText(val);
+  showToast('📋 Đã copy vào clipboard!', 'success');
+}
+
+// ─── OPEN POST ────────────────────────────────────────────
+function openPost(i) {
+  const post = state.posts[i];
+  if (post?.url) window.open(post.url, '_blank');
+}
+
+// ─── QUICK ACTIONS ────────────────────────────────────────
 function selectAll() {
-  posts.forEach(p => p.like = true);
-  renderPosts(); updateStats();
-  showToast('Đã chọn Like cho tất cả', 'success');
+  state.posts.forEach((_, i) => {
+    const cb = document.getElementById(`like-${i}`);
+    if (cb) { cb.checked = true; document.getElementById(`post-card-${i}`)?.classList.add('selected'); }
+  });
+  updateStats(); updateRunBtn();
 }
 
 function selectAllComments() {
-  posts.forEach(p => p.comment = true);
-  renderPosts(); updateStats();
-  showToast('Đã chọn Comment cho tất cả', 'success');
-}
-
-async function generateAllComments() {
-  const defaultStyle = document.getElementById('default-style').value;
-  const commentPosts = posts.filter(p => p.comment);
-  if (!commentPosts.length) { showToast('Chưa chọn comment post nào!', 'warning'); return; }
-
-  showToast(`Generating ${commentPosts.length} comments...`, 'info');
-  for (let i = 0; i < posts.length; i++) {
-    if (posts[i].comment) {
-      posts[i].style = defaultStyle;
-      await generateComment(i);
-      await delay(400);
-    }
-  }
-  showToast('Đã generate xong tất cả!', 'success');
+  state.posts.forEach((_, i) => {
+    const cb = document.getElementById(`cmt-${i}`);
+    if (cb) { cb.checked = true; onCommentCheck(i); }
+  });
+  updateStats(); updateRunBtn();
 }
 
 function clearSelection() {
-  posts.forEach(p => { p.like = false; p.comment = false; p.share = false; });
-  renderPosts(); updateStats();
-  showToast('Đã bỏ chọn tất cả', 'info');
+  state.posts.forEach((_, i) => {
+    ['like-', 'cmt-'].forEach(pfx => {
+      const cb = document.getElementById(pfx + i);
+      if (cb) cb.checked = false;
+    });
+    document.getElementById(`post-card-${i}`)?.classList.remove('selected');
+    document.getElementById(`ai-area-${i}`)?.classList.add('hidden');
+  });
+  updateStats(); updateRunBtn();
 }
 
-// ---- EXECUTION ----
+// ─── RUN EXECUTION ────────────────────────────────────────
 async function runExecution() {
-  if (isRunning) return;
-  const selected = posts.filter(p => p.like || p.comment || p.share);
-  if (!selected.length) { showToast('Chưa chọn action nào!', 'warning'); return; }
+  const delayMin = parseInt(document.getElementById('delay-min')?.value) || 7;
+  const delayMax = parseInt(document.getElementById('delay-max')?.value) || 20;
 
-  isRunning = true;
-  doneCount = 0;
-  document.getElementById('run-btn').disabled = true;
-  document.getElementById('run-btn').innerHTML = '<div class="spinner"></div> Running...';
-  setStatus('running', '🔄 Đang chạy...');
+  const likedPosts   = state.posts.filter((_, i) => document.getElementById(`like-${i}`)?.checked);
+  const commentPosts = state.posts.filter((_, i) => {
+    const checked  = document.getElementById(`cmt-${i}`)?.checked;
+    const hasText  = document.getElementById(`comment-${i}`)?.value?.trim();
+    return checked && hasText;
+  });
 
-  document.getElementById('progress-bar-wrap').classList.remove('hidden');
-  showSection('logs');
-  addLog('info', `=== BẮT ĐẦU THỰC THI: ${selected.length} posts ===`);
-
-  const minD = parseInt(document.getElementById('delay-min').value) * 1000;
-  const maxD = parseInt(document.getElementById('delay-max').value) * 1000;
-
-  for (let i = 0; i < posts.length; i++) {
-    const post = posts[i];
-    if (!post.like && !post.comment && !post.share) continue;
-
-    const actions = [];
-    if (post.like) actions.push('👍 Like');
-    if (post.comment) actions.push('💬 Comment');
-    if (post.share) actions.push('🔄 Share');
-
-    addLog('info', `[${i + 1}/${posts.length}] Mở bài: ${actions.join(', ')}`);
-
-    // Open tab
-    window.open(post.url, '_blank');
-    await delay(800);
-
-    // Copy comment to clipboard
-    if (post.comment && post.commentText) {
-      try {
-        await navigator.clipboard.writeText(post.commentText);
-        addLog('success', `Đã copy comment vào clipboard: "${post.commentText.substring(0, 50)}..."`);
-      } catch {
-        addLog('warning', `Không thể auto-copy. Comment: ${post.commentText.substring(0, 60)}`);
-      }
-    }
-
-    doneCount++;
-    const pct = Math.round((doneCount / selected.length) * 100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('stat-done').textContent = doneCount;
-
-    if (i < posts.length - 1) {
-      const waitMs = Math.floor(Math.random() * (maxD - minD)) + minD;
-      addLog('warning', `⏳ Chờ ${(waitMs / 1000).toFixed(1)}s trước bài tiếp theo...`);
-      await delay(waitMs);
-    }
+  if (!likedPosts.length && !commentPosts.length) {
+    showToast('Chưa chọn post nào để thực thi', 'warning');
+    return;
   }
 
-  addLog('success', `=== HOÀN THÀNH! ${doneCount} bài đã xử lý ===`);
-  setStatus('idle', '✅ Done');
-  showToast(`Hoàn thành ${doneCount} bài!`, 'success');
+  showSection('logs');
+  const wrap = document.getElementById('progress-bar-wrap');
+  const fill = document.getElementById('progress-fill');
+  wrap.classList.remove('hidden');
 
-  isRunning = false;
-  document.getElementById('run-btn').disabled = false;
-  document.getElementById('run-btn').innerHTML = '<span>▶</span> RUN';
+  const total = likedPosts.length + commentPosts.length;
+  let done = 0;
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  setStatus('Running...', 'blue');
+  addLog('info', `Bắt đầu: ${likedPosts.length} likes + ${commentPosts.length} comments`);
+
+  // Process likes
+  for (const post of likedPosts) {
+    const delay = randBetween(delayMin, delayMax) * 1000;
+    addLog('info', `[LIKE] Mở tab → ${post.url.slice(0, 60)}...`);
+    window.open(post.url, '_blank');
+    done++;
+    fill.style.width = `${(done / total) * 100}%`;
+    await sleep(delay);
+    addLog('success', `[LIKE] ✅ Tab đã mở`);
+  }
+
+  // Process comments
+  for (const post of commentPosts) {
+    const i       = state.posts.indexOf(post);
+    const comment = document.getElementById(`comment-${i}`)?.value?.trim();
+    if (!comment) continue;
+
+    const delay = randBetween(delayMin, delayMax) * 1000;
+    addLog('info', `[CMT] Copy comment → "${comment.slice(0, 40)}..."`);
+    await navigator.clipboard.writeText(comment);
+    window.open(post.url, '_blank');
+    done++;
+    fill.style.width = `${(done / total) * 100}%`;
+    addLog('success', `[CMT] ✅ Tab mở + comment đã copy vào clipboard`);
+    await sleep(delay);
+  }
+
+  document.getElementById('stat-done').textContent = done;
+  addLog('success', `✅ Hoàn thành ${done}/${total} tác vụ`);
+  showToast(`✅ Hoàn thành ${done} tác vụ`, 'success');
+  setStatus('Done', 'green');
+  btn.disabled = false;
+
+  setTimeout(() => wrap.classList.add('hidden'), 3000);
 }
 
-// ---- LOGS ----
+// ─── HELPERS ─────────────────────────────────────────────
+function updateStats() {
+  const liked    = state.posts.filter((_, i) => document.getElementById(`like-${i}`)?.checked).length;
+  const commented = state.posts.filter((_, i) => document.getElementById(`cmt-${i}`)?.checked).length;
+  document.getElementById('stat-posts').textContent    = state.posts.length;
+  document.getElementById('stat-selected').textContent = liked + commented;
+}
+
+function updateRunBtn() {
+  const hasAny = state.posts.some((_, i) =>
+    document.getElementById(`like-${i}`)?.checked ||
+    document.getElementById(`cmt-${i}`)?.checked
+  );
+  document.getElementById('run-btn').disabled = !hasAny;
+}
+
 function addLog(type, msg) {
+  state.logCount++;
   const container = document.getElementById('log-container');
-  const time = new Date().toLocaleTimeString('vi-VN');
-  const typeMap = { info: 'INFO', success: 'OK', warning: 'WARN', error: 'ERR' };
+  const ts  = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const div = document.createElement('div');
   div.className = `log-entry log-${type} slide-in`;
-  div.innerHTML = `<span style="color:var(--muted)">[${time}]</span> <span class="badge badge-${type === 'info' ? 'blue' : type === 'success' ? 'green' : type === 'warning' ? 'yellow' : 'red'}">${typeMap[type]}</span> ${msg}`;
+  div.innerHTML = `<span style="color:var(--muted)">[${ts}]</span> ${escHtml(msg)}`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 
-  logCount++;
+  // Badge
   const badge = document.getElementById('log-badge');
-  badge.textContent = logCount;
+  badge.textContent = state.logCount;
   badge.classList.remove('hidden');
 }
 
 function clearLogs() {
-  document.getElementById('log-container').innerHTML = '';
-  logCount = 0;
+  document.getElementById('log-container').innerHTML = '<div class="log-entry log-info"><span style="color:var(--muted)">[READY]</span> Logs cleared.</div>';
+  state.logCount = 0;
   document.getElementById('log-badge').classList.add('hidden');
 }
 
-// ---- STATS ----
-function updateStats() {
-  document.getElementById('stat-posts').textContent = posts.length;
-  const sel = posts.filter(p => p.like || p.comment || p.share).length;
-  document.getElementById('stat-selected').textContent = sel;
+function setStatus(text, color) {
+  const map = { blue: 'var(--accent)', green: 'var(--success)', red: 'var(--danger)', muted: 'var(--muted)' };
+  document.getElementById('status-text').textContent = text;
+  document.getElementById('status-dot').style.background = map[color] || map.muted;
 }
-
-// ---- STATUS ----
-function setStatus(state, text) {
-  const dot = document.getElementById('status-dot');
-  const txt = document.getElementById('status-text');
-  txt.textContent = text;
-  const colors = { running: 'var(--accent)', idle: 'var(--muted)', done: 'var(--success)' };
-  dot.style.background = colors[state] || colors.idle;
-}
-
-// ---- UTILS ----
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function showToast(msg, type = 'info') {
-  const colors = { success: 'var(--success)', warning: 'var(--warning)', error: 'var(--danger)', info: 'var(--accent)' };
-  const icons = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
-  const toast = document.createElement('div');
+  const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+  const toast  = document.createElement('div');
   toast.className = 'toast';
-  toast.style.cssText = `background:${colors[type]}22;border:1px solid ${colors[type]}44;color:var(--text)`;
-  toast.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  toast.style.cssText = `background:${colors[type] || colors.info};color:#fff;`;
+  toast.textContent = msg;
   document.getElementById('toast-container').appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function randBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
 }
