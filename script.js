@@ -102,23 +102,29 @@ function updateStats() {
 async function fetchPosts() {
   const url = document.getElementById('page-url').value.trim();
   if (!url) { toast('Nhập link Facebook Page trước!', 'warn'); return; }
+  if (!url.includes('facebook.com')) { toast('Link không hợp lệ! Phải là link Facebook', 'error'); return; }
 
   const btn = document.getElementById('fetch-btn');
   const icon = document.getElementById('fetch-icon');
   btn.disabled = true;
   icon.outerHTML = `<svg id="fetch-icon" class="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="25 75" stroke-linecap="round"/></svg>`;
 
-  addLog(`Fetching posts from: ${url}`, 'info');
+  addLog(`Đang xử lý page: ${url}`, 'info');
 
   try {
-    // Extract page name from URL for demo
-    const match = url.match(/facebook\.com\/([^/?]+)/);
-    const pageName = match ? match[1] : 'page';
+    // Extract page identifier from URL
+    const cleaned = url.replace(/\/$/, '');
+    const match = cleaned.match(/facebook\.com\/(?:pages\/[^/]+\/)?([^/?#]+)/);
+    const pageId = match ? match[1] : 'page';
+    // Normalize: strip query params
+    const pageUrl = `https://www.facebook.com/${pageId}`;
 
-    // Since Facebook Graph API requires auth token, we generate realistic mock data
-    // In production, replace with real FB Graph API call using user's access token
-    await sleep(1200);
-    state.posts = generateMockPosts(pageName, 10);
+    await sleep(800);
+
+    // Generate 10 placeholder slots — user sẽ nhập URL bài thật vào từng slot
+    state.pageUrl = pageUrl;
+    state.pageId = pageId;
+    state.posts = generatePostSlots(pageId, pageUrl, 10);
     state.actions = {};
     state.posts.forEach(p => {
       state.actions[p.id] = { like: false, comment: false, share: false, commentText: '' };
@@ -126,55 +132,32 @@ async function fetchPosts() {
 
     renderPosts();
     updateStats();
-    addLog(`Loaded ${state.posts.length} posts successfully`, 'success');
-    toast(`Đã load ${state.posts.length} bài viết!`, 'success');
+    addLog(`Đã tạo 10 slot bài viết cho page: ${pageId}`, 'success');
+    addLog(`➡ Nhập URL bài viết thật vào từng slot, hoặc RUN để thao tác trên Page`, 'warn');
+    toast(`Sẵn sàng! Nhập URL bài viết thật vào từng slot`, 'success');
     showSection('posts');
   } catch (e) {
     addLog(`Error: ${e.message}`, 'error');
-    toast('Lỗi khi fetch posts', 'error');
+    toast('Lỗi xử lý URL', 'error');
   } finally {
     btn.disabled = false;
     document.getElementById('fetch-icon').outerHTML = `<svg id="fetch-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>`;
   }
 }
 
-function generateMockPosts(pageName, count) {
-  const contents = [
-    `🎉 Chúng tôi vừa ra mắt sản phẩm mới! Hãy trải nghiệm ngay hôm nay và chia sẻ cảm nhận của bạn. Link trong bio nhé! #newproduct #launch`,
-    `Mùa hè này, cùng ${pageName} khám phá những điều thú vị nhất! Đừng bỏ lỡ chương trình ưu đãi đặc biệt dành cho khách hàng thân thiết 🔥`,
-    `✨ Cảm ơn 100K followers đã đồng hành cùng chúng tôi! Để tri ân, chúng tôi có một surprise đặc biệt sắp được công bố...`,
-    `Bạn đã thử công thức này chưa? Siêu đơn giản, siêu ngon! Comment "CÓ" nếu bạn muốn full recipe 👇`,
-    `Hôm nay là ngày đặc biệt — kỷ niệm 5 năm thành lập. Hành trình từ 0 đến đây thật sự không dễ dàng. Cảm ơn tất cả! 💙`,
-    `🚨 FLASH SALE 24H — Giảm đến 50% toàn bộ sản phẩm. Shop ngay trước khi hết hàng! Tag bạn bè để cùng mua nhé!`,
-    `Tip nhỏ cho ngày mới: ${pageName} luôn tin rằng mỗi ngày là một cơ hội mới. Hãy bắt đầu ngày hôm nay với năng lượng tích cực! ☀️`,
-    `Review thật từ khách hàng: "Tôi đã dùng sản phẩm này 3 tháng và kết quả thật sự ấn tượng!" — Minh Anh, HN. Cảm ơn bạn đã tin tưởng ❤️`,
-    `Livestream tối nay lúc 8PM! Chúng tôi sẽ có Q&A, giveaway và nhiều điều bất ngờ. Set reminder ngay! 📺`,
-    `Weekend vibes! Còn bạn, cuối tuần này làm gì? Comment chia sẻ cùng cộng đồng nhé 😊 #weekend #lifestyle`,
-  ];
-
-  const images = [
-    'https://picsum.photos/seed/fb1/600/400',
-    'https://picsum.photos/seed/fb2/600/400',
-    'https://picsum.photos/seed/fb3/600/400',
-    null,
-    'https://picsum.photos/seed/fb5/600/400',
-    'https://picsum.photos/seed/fb6/600/400',
-    null,
-    'https://picsum.photos/seed/fb8/600/400',
-    'https://picsum.photos/seed/fb9/600/400',
-    'https://picsum.photos/seed/fb10/600/400',
-  ];
-
+function generatePostSlots(pageId, pageUrl, count) {
   const now = Date.now();
   return Array.from({ length: count }, (_, i) => ({
     id: `post_${i + 1}`,
-    content: contents[i] || `Bài viết số ${i + 1} từ ${pageName}`,
-    image: images[i] || null,
-    likes: Math.floor(Math.random() * 500) + 10,
-    comments: Math.floor(Math.random() * 80) + 2,
-    shares: Math.floor(Math.random() * 40),
+    content: '',         // user sẽ nhập / để trống cũng được
+    image: null,
+    likes: null,
+    comments: null,
+    shares: null,
     time: new Date(now - i * 3600000 * 4).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    url: `https://www.facebook.com/${pageName.replace('https://www.facebook.com/', '')}/posts/sample_${i + 1}`,
+    // URL thật — user tự paste; mặc định trỏ về page để tiện navigate
+    url: pageUrl,
+    isSlot: true,        // flag = chưa có URL bài cụ thể
   }));
 }
 
@@ -198,17 +181,35 @@ function renderPosts() {
         <div class="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">${idx + 1}</div>
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <p class="text-sm text-slate-200 leading-relaxed mb-2 line-clamp-3">${escapeHtml(post.content)}</p>
-          ${post.image ? `<img src="${post.image}" alt="" class="w-full max-h-48 object-cover rounded-lg mb-2 bg-slate-800" loading="lazy" />` : ''}
-          <div class="flex items-center gap-3 text-xs text-slate-500 mb-3">
-            <span>👍 ${post.likes}</span>
-            <span>💬 ${post.comments}</span>
-            <span>🔗 ${post.shares}</span>
-            <span class="ml-auto">${post.time}</span>
+
+          <!-- URL input thật -->
+          <div class="mb-3">
+            <label class="text-xs text-slate-500 mb-1 block">URL bài viết thật (copy từ Facebook)</label>
+            <div class="flex gap-2">
+              <input id="url-${post.id}" type="text"
+                value="${escapeHtml(post.isSlot ? '' : post.url)}"
+                placeholder="https://www.facebook.com/page/posts/..."
+                oninput="updatePostUrl('${post.id}', this.value)"
+                class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 min-w-0" />
+              <button onclick="openPostUrl('${post.id}')"
+                class="shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                Mở
+              </button>
+            </div>
+          </div>
+
+          <!-- Note / mô tả tuỳ chọn -->
+          <div class="mb-3">
+            <input id="note-${post.id}" type="text"
+              value="${escapeHtml(post.content || '')}"
+              placeholder="Ghi chú về bài này (tuỳ chọn)..."
+              oninput="updatePostNote('${post.id}', this.value)"
+              class="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:border-slate-600" />
           </div>
 
           <!-- Actions -->
-          <div class="flex flex-wrap gap-2 mb-3">
+          <div class="flex flex-wrap gap-3 mb-3">
             <label class="flex items-center gap-1.5 cursor-pointer select-none">
               <input type="checkbox" ${a.like ? 'checked' : ''} onchange="toggleAction('${post.id}','like',this.checked)"
                 class="w-3.5 h-3.5 accent-indigo-500 cursor-pointer" />
@@ -239,6 +240,10 @@ function renderPosts() {
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 AI Generate
               </button>
+              ${a.commentText ? `<button onclick="copyComment('${post.id}')" class="flex items-center gap-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1.5 rounded-lg transition-all">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>` : ''}
             </div>
             <textarea id="comment-${post.id}" rows="2" placeholder="Nhập comment hoặc dùng AI Generate..."
               oninput="updateComment('${post.id}',this.value)"
@@ -248,10 +253,9 @@ function renderPosts() {
       </div>
       <!-- Card footer -->
       <div class="px-4 py-2.5 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
-        <a href="${post.url}" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-          Mở bài viết
-        </a>
+        <span id="url-status-${post.id}" class="text-xs ${post.isSlot ? 'text-amber-500' : 'text-emerald-400'}">
+          ${post.isSlot ? '⚠ Chưa có URL bài viết' : '✓ Đã có URL'}
+        </span>
         <span id="card-status-${post.id}" class="text-xs text-slate-600">Pending</span>
       </div>
     `;
@@ -270,6 +274,54 @@ function toggleAction(postId, type, value) {
 
 function updateComment(postId, text) {
   state.actions[postId].commentText = text;
+  // Re-render copy button visibility
+  const area = document.getElementById(`comment-area-${postId}`);
+  if (area) {
+    const copyBtn = area.querySelector('.copy-btn');
+    // handled inline via re-render would be complex; skip for perf
+  }
+}
+
+function updatePostUrl(postId, url) {
+  const post = state.posts.find(p => p.id === postId);
+  if (!post) return;
+  const trimmed = url.trim();
+  post.url = trimmed || state.pageUrl;
+  post.isSlot = !trimmed || !trimmed.includes('facebook.com');
+  const statusEl = document.getElementById(`url-status-${postId}`);
+  if (statusEl) {
+    if (post.isSlot) {
+      statusEl.textContent = '⚠ Chưa có URL bài viết';
+      statusEl.className = 'text-xs text-amber-500';
+    } else {
+      statusEl.textContent = '✓ Đã có URL';
+      statusEl.className = 'text-xs text-emerald-400';
+    }
+  }
+}
+
+function updatePostNote(postId, text) {
+  const post = state.posts.find(p => p.id === postId);
+  if (post) post.content = text;
+}
+
+function openPostUrl(postId) {
+  const post = state.posts.find(p => p.id === postId);
+  if (!post) return;
+  const url = post.url || state.pageUrl;
+  if (url) window.open(url, '_blank');
+  else toast('Chưa có URL để mở!', 'warn');
+}
+
+async function copyComment(postId) {
+  const text = state.actions[postId]?.commentText;
+  if (!text) { toast('Chưa có comment!', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Đã copy vào clipboard!', 'success');
+  } catch {
+    toast(`Copy thủ công: ${text}`, 'warn');
+  }
 }
 
 function escapeHtml(str) {
@@ -374,49 +426,55 @@ async function runExecution() {
   for (let i = 0; i < selectedPosts.length; i++) {
     const post = selectedPosts[i];
     const a = state.actions[post.id];
+    const postUrl = post.url && post.url.includes('facebook.com') ? post.url : null;
+    const displayUrl = postUrl || state.pageUrl || 'https://www.facebook.com';
 
-    addLog(`[${i + 1}/${selectedPosts.length}] Processing: "${post.content.slice(0, 40)}..."`, 'info');
+    addLog(`─────────────────────────────────────`, 'info');
+    addLog(`[${i + 1}/${selectedPosts.length}] Bài viết: ${post.content ? `"${post.content.slice(0,50)}..."` : `Slot #${i+1}`}`, 'info');
 
     // Update card status
     const cardStatus = document.getElementById(`card-status-${post.id}`);
-    if (cardStatus) cardStatus.textContent = '⚙️ Processing...';
-    if (cardStatus) cardStatus.className = 'text-xs text-yellow-400';
+    if (cardStatus) { cardStatus.textContent = '⚙️ Processing...'; cardStatus.className = 'text-xs text-yellow-400'; }
 
-    // Open post in new tab
-    addLog(`Opening post URL in new tab...`, 'action');
-    window.open(post.url, '_blank');
-
-    // Log planned actions
-    if (a.like) addLog(`Action: Like this post`, 'info');
-    if (a.share) addLog(`Action: Share this post`, 'info');
-    if (a.comment && a.commentText) {
-      // Copy to clipboard
-      try {
-        await navigator.clipboard.writeText(a.commentText);
-        addLog(`✓ Comment copied to clipboard: "${a.commentText.slice(0, 60)}..."`, 'success');
-        toast(`Đã copy comment cho bài ${i + 1}!`, 'success');
-      } catch {
-        addLog(`⚠ Could not auto-copy. Manual copy: "${a.commentText}"`, 'warn');
-        toast(`Copy thủ công comment bài ${i + 1}`, 'warn');
-      }
-    } else if (a.comment && !a.commentText) {
-      addLog(`⚠ Comment checked but no text — skipping copy`, 'warn');
+    // Warn if no specific post URL
+    if (!postUrl) {
+      addLog(`⚠ Slot #${i+1} chưa có URL bài cụ thể → mở trang Page chính`, 'warn');
+      addLog(`   Hãy tìm bài viết trên Page và thao tác thủ công`, 'warn');
     }
 
-    // Delay
-    const delay = randomBetween(delayMin, delayMax);
-    addLog(`Waiting ${delay}s before next post...`, 'info');
+    // Open URL
+    addLog(`⚡ Mở tab: ${displayUrl}`, 'action');
+    window.open(displayUrl, '_blank');
 
-    // Countdown
+    // Actions guidance
+    if (a.like) addLog(`  → Hãy bấm LIKE trên bài viết`, 'info');
+    if (a.share) addLog(`  → Hãy bấm SHARE trên bài viết`, 'info');
+    if (a.comment && a.commentText) {
+      try {
+        await navigator.clipboard.writeText(a.commentText);
+        addLog(`  → ✓ Comment đã copy vào clipboard — Paste (Ctrl+V) vào ô comment`, 'success');
+        toast(`[Bài ${i + 1}] Comment copied! Paste vào Facebook`, 'success');
+      } catch {
+        addLog(`  → Comment: "${a.commentText}"`, 'warn');
+        addLog(`  → Copy thủ công đoạn trên vào ô comment`, 'warn');
+        toast(`[Bài ${i + 1}] Clipboard thất bại — xem Logs`, 'warn');
+      }
+    } else if (a.comment && !a.commentText) {
+      addLog(`  → ⚠ Comment được chọn nhưng chưa có nội dung`, 'warn');
+    }
+
+    // Delay countdown
+    const delay = randomBetween(delayMin, delayMax);
+    addLog(`  ⏱ Chờ ${delay}s trước bài tiếp theo...`, 'info');
     for (let t = delay; t > 0; t--) {
-      statusText.textContent = `Next in ${t}s...`;
+      statusText.textContent = `Bài ${i+1}/${selectedPosts.length} — next in ${t}s`;
       await sleep(1000);
     }
 
     state.stats.done++;
     updateStats();
     if (cardStatus) { cardStatus.textContent = '✓ Done'; cardStatus.className = 'text-xs text-emerald-400'; }
-    addLog(`Post ${i + 1} done`, 'success');
+    addLog(`✓ Bài ${i + 1} hoàn tất`, 'success');
   }
 
   // Finish
