@@ -1,26 +1,85 @@
-# FB Interaction Pro
+# FBBoost Pro — Semi-Auto Facebook Interaction Tool
 
-Semi-auto Facebook interaction tool. Deploy on Vercel.
+## Cấu trúc project
 
-## Env vars (đã set trên Vercel Dashboard)
+```
+fb-tool/
+├── index.html        # Giao diện chính (SaaS UI)
+├── script.js         # Logic frontend
+├── vercel.json       # Vercel deployment config
+└── api/
+    └── ai.js         # Serverless API — AI comment generation
+```
 
-| Var | Value |
-|-----|-------|
-| `AI_API_KEY` | sk-ant-api03-... |
-| `AI_BASE_URL` | https://1gw.gwai.cloud |
-| `AI_MODEL` | claude-3-haiku-20240307 |
+## Deploy lên Vercel (5 phút)
 
-## Deploy
-
+### 1. Cài Vercel CLI
 ```bash
 npm i -g vercel
+```
+
+### 2. Login Vercel
+```bash
+vercel login
+```
+
+### 3. Deploy
+```bash
 cd fb-tool
 vercel --prod
 ```
 
-## Files
+### 4. Set Environment Variable
+Trong Vercel Dashboard → Project → Settings → Environment Variables:
+```
+ANTHROPIC_API_KEY = sk-ant-xxxxxxxxxxxx
+```
 
-- `index.html` — UI
-- `script.js` — Frontend logic
-- `api/ai.js` — Serverless AI proxy
-- `vercel.json` — Deploy config
+Hoặc qua CLI:
+```bash
+vercel env add ANTHROPIC_API_KEY
+```
+
+### 5. Redeploy sau khi set env
+```bash
+vercel --prod
+```
+
+---
+
+## Chạy local (development)
+
+```bash
+npm i -g vercel
+vercel dev
+```
+Mở: http://localhost:3000
+
+---
+
+## Sử dụng
+
+1. **Dashboard** → Nhập link Facebook Page → Fetch Posts
+2. **Posts** → Tick checkbox like/comment/share cho từng bài
+3. Dùng **AI Generate** để tạo comment tự động theo style
+4. Nhấn **RUN** ở góc trên phải
+5. Tool sẽ:
+   - Mở từng bài trong tab mới
+   - Copy comment vào clipboard
+   - Delay random 7–20s giữa các bài
+6. Bạn thủ công: like/paste comment/share trên Facebook
+
+---
+
+## Lưu ý an toàn
+
+- Tool **KHÔNG** tự động click hay login Facebook
+- Tool **KHÔNG** vi phạm ToS Facebook vì không dùng automation
+- Mọi thao tác cuối đều do người dùng thực hiện thủ công
+- Delay ngẫu nhiên để tránh pattern detection
+
+---
+
+## Tùy chỉnh delay
+
+Vào **Settings** để thay đổi delay min/max (mặc định 7–20 giây).
